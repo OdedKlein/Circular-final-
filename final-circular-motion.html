@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>תנועה מעגלית בסיסית</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            padding: 20px;
+        }
+        #demoCanvas {
+            border: 1px solid #ccc;
+            margin: 20px;
+        }
+        button {
+            font-size: 16px;
+            padding: 10px 20px;
+            margin: 10px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button.break {
+            background: #FF3B30;
+        }
+        button:disabled {
+            background: #999;
+            cursor: default;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .speed-display {
+            font-size: 18px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>הדגמה של תנועה מעגלית</h1>
+    <div class="controls">
+        <button onclick="toggleAnimation()">הפעל/עצור</button>
+        <button onclick="increaseSpeed()">הגבר מהירות</button>
+        <button onclick="decreaseSpeed()">האט</button>
+        <button class="break" onclick="breakString()" id="breakBtn">קרע את החוט</button>
+        <div class="speed-display">
+            מהירות זוויתית: <span id="speedDisplay">1</span>
+        </div>
+    </div>
+    <canvas id="demoCanvas" width="300" height="300"></canvas>
+
+    <script>
+        const canvas = document.getElementById('demoCanvas');
+        const ctx = canvas.getContext('2d');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const breakBtn = document.getElementById('breakBtn');
+        
+        let angle = 0;
+        let isAnimating = false;
+        let speed = 1;
+        let stringBroken = false;
+        let breakPoint = null;
+        let currentPosition = { x: 150, y: 90 };
+        let tracePoints = [];
+        
+        const centerX = 150;
+        const centerY = 150;
+        const radius = 60;
+
+        function increaseSpeed() {
+            if (!stringBroken) {
+                speed = Math.min(speed + 0.5, 5);
+                speedDisplay.textContent = speed.toFixed(1);
+            }
+        }
+
+        function decreaseSpeed() {
+            if (!stringBroken) {
+                speed = Math.max(speed - 0.5, 0.5);
+                speedDisplay.textContent = speed.toFixed(1);
+            }
+        }
+
+        function breakString() {
+            if (isAnimating && !stringBroken) {
+                stringBroken = true;
+                breakPoint = {
+                    x: currentPosition.x,
+                    y: currentPosition.y,
+                    angle: angle
+                };
+                breakBtn.disabled = true;
+                tracePoints = [];
+                tracePoints.push({...currentPosition});
+            }
+        }
+
+        function drawTrace() {
+            if (tracePoints.length < 2) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(tracePoints[0].x, tracePoints[0].y);
+            for (let i = 1; i < tracePoints.length; i++) {
+                ctx.lineTo(tracePoints[i].x, tracePoints[i].y);
+            }
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ccc';
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (stringBroken) {
+                drawTrace();
+            }
+
+            if (!stringBroken) {
+                currentPosition.x = centerX + radius * Math.cos(angle);
+                currentPosition.y = centerY + radius * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(currentPosition.x, currentPosition.y);
+                ctx.strokeStyle = 'black';
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.arc(currentPosition.x, currentPosition.y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'blue';
+            ctx.fill();
+
+            let velocityX, velocityY;
+            if (stringBroken) {
+                velocityX = -Math.sin(breakPoint.angle) * 20 * Math.sqrt(speed);
+                velocityY = Math.cos(breakPoint.angle) * 20 * Math.sqrt(speed);
+            } else {
+                velocityX = -Math.sin(angle) * 20 * Math.sqrt(speed);
+                velocityY = Math.cos(angle) * 20 * Math.sqrt(speed);
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(currentPosition.x, currentPosition.y);
+            ctx.lineTo(currentPosition.x + velocityX, currentPosition.y + velocityY);
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            const arrowSize = 5;
+            const arrowAngle = Math.atan2(velocityY, velocityX);
+            ctx.beginPath();
+            ctx.moveTo(currentPosition.x + velocityX, currentPosition.y + velocityY);
+            ctx.lineTo(
+                currentPosition.x + velocityX - arrowSize * Math.cos(arrowAngle - Math.PI/6),
+                currentPosition.y + velocityY - arrowSize * Math.sin(arrowAngle - Math.PI/6)
+            );
+            ctx.lineTo(
+                currentPosition.x + velocityX - arrowSize * Math.cos(arrowAngle + Math.PI/6),
+                currentPosition.y + velocityY - arrowSize * Math.sin(arrowAngle + Math.PI/6)
+            );
+            ctx.fillStyle = 'green';
+            ctx.fill();
+        }
+
+        function animate() {
+            if (isAnimating) {
+                if (!stringBroken) {
+                    angle += 0.02 * speed;
+                } else {
+                    const dx = -Math.sin(breakPoint.angle) * speed;
+                    const dy = Math.cos(breakPoint.angle) * speed;
+                    currentPosition.x += dx;
+                    currentPosition.y += dy;
+                    
+                    tracePoints.push({...currentPosition});
+                    
+                    if (tracePoints.length > 100) {
+                        tracePoints.shift();
+                    }
+
+                    if (currentPosition.x < 0 || currentPosition.x > canvas.width ||
+                        currentPosition.y < 0 || currentPosition.y > canvas.height) {
+                        isAnimating = false;
+                        return;
+                    }
+                }
+                draw();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            if (isAnimating) {
+                if (stringBroken) {
+                    tracePoints = [];
+                    tracePoints.push({...currentPosition});
+                }
+                animate();
+            }
+        }
+
+        draw();
+    </script>
+</body>
+</html>
